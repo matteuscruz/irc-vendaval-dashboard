@@ -236,7 +236,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <div class="masthead-inner">
     <p class="kicker">ERA5 × INMET · rajada máxima diária · 6 clusters de vento · 2000–2025</p>
     <h1>Correção da rajada de vento do ERA5 com aprendizado de máquina</h1>
-    <p class="meta">Painel de métricas gerado em 16/11/2026 08:50 · análise <code>75a5a24</code> ·
+    <p class="meta">Painel de métricas gerado em 16/11/2026 08:56 · análise <code>75a5a24</code> ·
       <a href="manifest.json">proveniência</a></p>
   </div>
 </header>
@@ -390,11 +390,13 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     <p class="chapter-no">Capítulo 5</p>
     <h2>Estações</h2>
     <p class="lead">117 estações INMET com dias não vistos (teste 2000–2024 e 2025). Escolha o modelo e o que
-      a cor mostra; desligue clusters na legenda do mapa. Clique numa estação para ver a série medida × prevista.</p>
+      a cor mostra; clique numa estação para ver as métricas, a série medida × prevista e o erro por trimestre.</p>
     <div class="controls">
       <label>Modelo<select id="s-model"></select></label>
       <label>Colorir por<select id="s-cor"></select></label>
+      <label>Recorte<span class="seg" id="pt-recorte"><button type="button" data-r="T" class="active">teste 2000–2024</button><button type="button" data-r="N">2025</button><button type="button" data-r="TN">ambos</button></span></label>
     </div>
+    <div class="source-chips" id="s-clusters"></div>
     <div class="network">
       <div>
         <div class="map tall" id="station-map"></div>
@@ -403,21 +405,23 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       <div class="point-panel">
         <h3 id="pt-title">Escolha uma estação no mapa</h3>
         <p class="meta" id="pt-meta"></p>
-        <div class="controls compact">
-          <div class="seg" id="pt-recorte">
-            <button type="button" data-r="T" class="active">teste 2000–2024</button><button type="button" data-r="N">2025</button><button type="button" data-r="TN">ambos</button>
-          </div>
-        </div>
-        <div class="source-chips" id="pt-sources"></div>
-        <div class="chart" id="pt-series" style="height:300px"></div>
-        <div class="grid-2 tight">
-          <div class="chart" id="pt-scatter" style="height:280px"></div>
-          <div><table class="mini" id="pt-table"></table></div>
-        </div>
-        <p class="caption">Rajada máxima diária (m/s). Dispersão: INMET × modelo escolhido no mapa, com a diagonal 1:1.
-          A tabela usa os dias do recorte escolhido.</p>
+        <div class="mesh-stats" id="pt-cards"></div>
+        <table class="mini" id="pt-table"></table>
+        <p class="caption">Dias do recorte escolhido. Ganho = RMSE do ERA5 − RMSE do modelo (positivo = erra menos que
+          o ERA5). A linha em negrito é o modelo escolhido.</p>
       </div>
     </div>
+    <h3 id="pt-series-title">Série diária</h3>
+    <div class="source-chips" id="pt-sources"></div>
+    <div class="chart" id="pt-series" style="height:360px"></div>
+    <p class="caption">Rajada máxima diária (m/s) nos dias do recorte. Use os botões acima do gráfico para mudar a
+      janela ou arraste para dar zoom; duplo clique volta ao todo.</p>
+    <div class="grid-2">
+      <div><h4>Medido × previsto</h4><div class="chart" id="pt-scatter" style="height:340px"></div></div>
+      <div><h4>Erro por trimestre</h4><div class="chart" id="pt-season" style="height:340px"></div></div>
+    </div>
+    <p class="caption">Dispersão: INMET × ERA5 e × modelo escolhido, com a diagonal 1:1. Barras: RMSE de cada
+      trimestre na estação; o número acima é o nº de dias.</p>
     <nav class="pager"><a href="#diagnosticos">← Diagnósticos</a><a href="#grade">Campos na grade →</a></nav>
   </section>
 
@@ -985,8 +989,16 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
         markers[e.id] = L.circleMarker([e.lat, e.lon], { radius: 6, color: '#1a1a1a', weight: 0.8, fillOpacity: 1, fillColor: '#bbb' })
           .bindTooltip(e.id, { direction: 'top' }).on('click', function () { choose(e.id); }).addTo(grupos[e.cluster]);
       });
-      var ov = {}; CLS.forEach(function (c) { ov['cluster ' + c + ' — ' + REGIAO[c]] = grupos[c]; });
-      L.control.layers(null, ov, { collapsed: false, position: 'topright' }).addTo(map);
+      // clusters como botões fora do mapa (a lista dentro do mapa cobria as estações)
+      $('s-clusters').innerHTML = CLS.map(function (c) {
+        return '<button type="button" data-cl="' + c + '" style="--c:#1a1a1a"><i></i>cluster ' + c + ' — ' + esc(REGIAO[c]) + '</button>';
+      }).join('');
+      $('s-clusters').addEventListener('click', function (ev) {
+        var b = ev.target.closest('button'); if (!b) return;
+        var g = grupos[b.dataset.cl], on = map.hasLayer(g);
+        if (on) map.removeLayer(g); else map.addLayer(g);
+        b.classList.toggle('off', on);
+      });
       paint();
     }
     $('s-model').addEventListener('change', function () { st.model = $('s-model').value; paint(); render(); });
@@ -1010,7 +1022,8 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     function choose(id) {
       st.est = id; st.data = null; paint();
       var e = EST.filter(function (x) { return x.id === id; })[0];
-      $('pt-title').textContent = 'Estação ' + id + ' — cluster ' + e.cluster;
+      $('pt-title').textContent = 'Estação ' + id + ' — cluster ' + e.cluster + ' (' + REGIAO[e.cluster] + ')';
+      $('pt-series-title').textContent = 'Série diária — estação ' + id;
       $('pt-meta').innerHTML = Math.abs(e.lat).toFixed(3) + '°S, ' + Math.abs(e.lon).toFixed(3) + '°W · ' + e.n_teste +
         ' dias de teste, ' + e.n_2025 + ' em 2025 · centro da célula ERA5 a ' + fmt(e.dist_km, 1) + ' km';
       loadSeries(id, 'assets/series/' + id + '.js', function (d) { if (st.est === id) { st.data = d; render(); } });
@@ -1038,23 +1051,52 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
           connectgaps: false, hovertemplate: '%{x}<br>%{y:.1f} m/s<extra>' + (s === 'inmet' ? 'INMET' : NAME[s]) + '</extra>'
         });
       });
-      plot('pt-series', traces, { xaxis: { type: 'date' }, yaxis: { title: { text: 'rajada (m/s)' } }, margin: { l: 50, r: 8, t: 8, b: 36 } });
+      var ultimo = ii.length ? d.t[ii[ii.length - 1]] : null;
+      var ini = ultimo ? new Date(Date.parse(ultimo) - 3 * 365.25 * 86400000).toISOString().slice(0, 10) : null;
+      plot('pt-series', traces, { showlegend: false, margin: { l: 50, r: 8, t: 34, b: 36 }, yaxis: { title: { text: 'rajada (m/s)' } },
+        xaxis: { type: 'date', range: ini ? [ini, ultimo] : undefined, rangeselector: { x: 0, y: 1.12, font: { size: 10 }, bgcolor: '#fff', activecolor: '#d4d4d4', bordercolor: '#1a1a1a', borderwidth: 1,
+          buttons: [{ count: 1, label: '1 ano', step: 'year', stepmode: 'backward' }, { count: 3, label: '3 anos', step: 'year', stepmode: 'backward' },
+                    { count: 10, label: '10 anos', step: 'year', stepmode: 'backward' }, { step: 'all', label: 'tudo' }] } } });
       var xs = ii.map(function (i) { return d.inmet[i]; }), mx = Math.max.apply(null, xs.filter(isFinite).concat([30]));
       plot('pt-scatter', [
-        { type: 'scatter', mode: 'markers', x: xs, y: ii.map(function (i) { return d.era5[i]; }), name: 'ERA5', marker: { color: COLOR.era5, size: 3, opacity: 0.35 } },
-        { type: 'scatter', mode: 'markers', x: xs, y: ii.map(function (i) { return d[st.model][i]; }), name: NAME[st.model], marker: { color: COLOR[st.model], size: 3, opacity: 0.5 } },
+        { type: 'scatter', mode: 'markers', x: xs, y: ii.map(function (i) { return d.era5[i]; }), name: 'ERA5', marker: { color: COLOR.era5, size: 4, opacity: 0.35 } },
+        { type: 'scatter', mode: 'markers', x: xs, y: ii.map(function (i) { return d[st.model][i]; }), name: NAME[st.model], marker: { color: COLOR[st.model], size: 4, opacity: 0.5 } },
         { type: 'scatter', mode: 'lines', x: [0, mx], y: [0, mx], line: { color: '#1a1a1a', width: 0.8, dash: 'dot' }, hoverinfo: 'skip', showlegend: false }
       ], { xaxis: { title: { text: 'INMET (m/s)' }, range: [0, mx] }, yaxis: { title: { text: 'previsto (m/s)' }, range: [0, mx] },
-        showlegend: true, legend: { orientation: 'h', y: 1.12, x: 0, font: { size: 9 } }, margin: { l: 50, r: 8, t: 26, b: 40 } });
-      var rows = MODELS.map(function (m) {
-        var e2 = 0, b = 0, n = 0;
-        ii.forEach(function (i) { var p = d[m][i], y = d.inmet[i]; if (p === null || y === null) return; e2 += (p - y) * (p - y); b += p - y; n++; });
-        return { m: m, n: n, rmse: n ? Math.sqrt(e2 / n) : NaN, vies: n ? b / n : NaN };
-      });
-      $('pt-table').innerHTML = '<thead><tr><th>modelo</th><th>dias</th><th>RMSE</th><th>viés</th></tr></thead><tbody>' + rows.map(function (r) {
-        return '<tr><td><i class="dot" style="background:' + COLOR[r.m] + '"></i>' + esc(NAME[r.m]) + '</td><td>' + r.n + '</td><td>' + fmt(r.rmse, 2) + '</td><td>' + fmt(r.vies, 2) + '</td></tr>';
+        showlegend: true, legend: { orientation: 'h', y: 1.1, x: 0, font: { size: 10 } }, margin: { l: 50, r: 8, t: 26, b: 40 } });
+      function stats(m, filtro) {
+        var e2 = 0, b = 0, n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+        ii.forEach(function (i) {
+          if (filtro && !filtro(i)) return;
+          var p = d[m][i], y = d.inmet[i]; if (p === null || y === null) return;
+          e2 += (p - y) * (p - y); b += p - y; n++; sx += y; sy += p; sxx += y * y; syy += p * p; sxy += y * p;
+        });
+        var cov = sxy / n - (sx / n) * (sy / n), vx = sxx / n - (sx / n) * (sx / n), vy = syy / n - (sy / n) * (sy / n);
+        return { n: n, rmse: n ? Math.sqrt(e2 / n) : NaN, vies: n ? b / n : NaN, corr: n > 2 ? cov / Math.sqrt(vx * vy) : NaN };
+      }
+      var rows = MODELS.map(function (m) { var r = stats(m); r.m = m; return r; });
+      var r0 = rows[0];
+      $('pt-table').innerHTML = '<thead><tr><th>modelo</th><th>dias</th><th>RMSE</th><th>ganho</th><th>viés</th><th>corr.</th></tr></thead><tbody>' + rows.map(function (r) {
+        var g = r.m === 'era5' ? NaN : r0.rmse - r.rmse;
+        return '<tr' + (r.m === st.model ? ' style="font-weight:700"' : '') + '><td><i class="dot" style="background:' + COLOR[r.m] + '"></i>' + esc(NAME[r.m]) + '</td><td>' + r.n + '</td><td>' + fmt(r.rmse, 2) +
+          '</td><td style="color:' + (g > 0 ? 'var(--gain)' : g < 0 ? 'var(--loss)' : 'inherit') + '">' + (isFinite(g) ? (g > 0 ? '+' : '') + fmt(g, 2) : '—') + '</td><td>' + fmt(r.vies, 2) + '</td><td>' + fmt(r.corr, 2) + '</td></tr>';
       }).join('') + '</tbody>';
+      var rm = rows.filter(function (r) { return r.m === st.model; })[0];
+      $('pt-cards').innerHTML = '<div><b>' + fmt(r0.rmse, 2) + ' → ' + fmt(rm.rmse, 2) + '</b>RMSE ERA5 → ' + esc(NAME[st.model]) + ' (m/s)</div>' +
+        '<div><b>' + fmt(r0.vies, 2) + ' → ' + fmt(rm.vies, 2) + '</b>viés (m/s)</div><div><b>' + rm.n + '</b>dias no recorte</div>';
+      var EST4 = ['DJF', 'MAM', 'JJA', 'SON'];
+      function est(i) { var m = Number(d.t[i].slice(5, 7)); return m === 12 || m <= 2 ? 'DJF' : m <= 5 ? 'MAM' : m <= 8 ? 'JJA' : 'SON'; }
+      var porEst = {};
+      ['era5', st.model].forEach(function (m) { porEst[m] = EST4.map(function (e) { return stats(m, function (i) { return est(i) === e; }); }); });
+      plot('pt-season', ['era5', st.model].map(function (m) {
+        return { type: 'bar', name: NAME[m], x: EST4, y: porEst[m].map(function (r) { return r.n ? r.rmse : null; }),
+          text: porEst[m].map(function (r) { return m === 'era5' ? String(r.n) : ''; }), textposition: 'outside', textfont: { size: 9, color: '#5c5c5c' },
+          marker: { color: COLOR[m], line: { color: '#1a1a1a', width: 0.4 } }, hovertemplate: '%{x}: RMSE %{y:.2f} m/s<extra>' + NAME[m] + '</extra>' };
+      }), { barmode: 'group', showlegend: true, legend: { orientation: 'h', y: 1.1, x: 0, font: { size: 10 } }, yaxis: { title: { text: 'RMSE (m/s)' }, rangemode: 'tozero' }, margin: { l: 50, r: 8, t: 26, b: 36 } });
     }
+    // começa com a estação de série mais longa no teste, para o painel não abrir vazio
+    var ini0 = EST.slice().sort(function (a, b) { return b.n_teste - a.n_teste; })[0];
+    if (ini0) choose(ini0.id);
   }
 
   // ---------- campos na grade (adaptado de initFields do relatório MPAS: cortina A|B e diferença em canvas) ----------
