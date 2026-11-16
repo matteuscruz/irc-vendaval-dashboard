@@ -236,7 +236,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <div class="masthead-inner">
     <p class="kicker">ERA5 × INMET · rajada máxima diária · 6 clusters de vento · 2000–2025</p>
     <h1>Correção da rajada de vento do ERA5 com aprendizado de máquina</h1>
-    <p class="meta">Painel de métricas gerado em 16/11/2026 08:46 · análise <code>75a5a24</code> ·
+    <p class="meta">Painel de métricas gerado em 16/11/2026 08:50 · análise <code>75a5a24</code> ·
       <a href="manifest.json">proveniência</a></p>
   </div>
 </header>
@@ -912,6 +912,22 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     return map;
   }
 
+  // O Leaflet mede o contêiner ao criar o mapa; se o layout ainda não terminou, o mapa fica pequeno e deslocado.
+  // Refaz tamanho e enquadramento quando o mapa entra na tela, quando a janela muda e depois do carregamento.
+  function keepFitted(map, bounds) {
+    var el = map.getContainer(), w0 = 0;
+    function refit() {
+      var w = el.clientWidth; if (!w) return;
+      map.invalidateSize({ animate: false });
+      if (w !== w0) { map.fitBounds(bounds, { animate: false }); w0 = w; }
+    }
+    refit();
+    window.addEventListener('resize', function () { w0 = 0; refit(); });
+    window.addEventListener('load', function () { w0 = 0; refit(); });
+    if (window.IntersectionObserver) new IntersectionObserver(function (es) { if (es[0].isIntersecting) refit(); }).observe(el);
+    return refit;
+  }
+
   // ---------- estações ----------
   var seriesCache = {};
   function loadSeries(key, url, cb) {
@@ -963,7 +979,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       $('s-colorbar').innerHTML = '<span>' + c.lo + '</span><div class="bar" style="background:' + gradient(g) + '"></div><span>' + c.hi + '</span>';
     }
     if (map) {
-      map.fitBounds([[-34, -58], [-17, -39]]);
+      keepFitted(map, [[-34, -58], [-17, -39]]);
       CLS.forEach(function (c) { grupos[c] = L.layerGroup().addTo(map); });
       EST.forEach(function (e) {
         markers[e.id] = L.circleMarker([e.lat, e.lon], { radius: 6, color: '#1a1a1a', weight: 0.8, fillOpacity: 1, fillColor: '#bbb' })
@@ -1060,7 +1076,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     select('g-stat', Object.keys(STAT).map(function (k) { return { value: k, label: STAT[k].label }; }), st.stat);
     select('g-per', Object.keys(PER).map(function (k) { return { value: k, label: PER[k] }; }), st.per);
     var map = baseMap('field-map'); if (!map) return;
-    map.fitBounds([[-34, -58], [-15, -39.5]]);
+    var refit = keepFitted(map, [[-34, -58], [-15, -39.5]]);
     var C = null, bounds = null, ovA = null, ovB = null, handle = null, handleX = null, LUTS = {};
     var estLayer = L.layerGroup(), estMarkers = {};
     EST.forEach(function (e) {
@@ -1099,7 +1115,8 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       if (!ovB || !handle) return;
       var img = ovB.getElement(); if (!img) return;
       var mapRect = $('field-map').getBoundingClientRect(), imgRect = img.getBoundingClientRect();
-      var x = handleX === null ? mapRect.width / 2 : handleX;
+      // por padrão a cortina fica no meio do campo (não do mapa), para A e B aparecerem mesmo com o mapa deslocado
+      var x = handleX === null ? Math.max(0, Math.min(mapRect.width, (imgRect.left + imgRect.right) / 2 - mapRect.left)) : handleX;
       handle.style.left = x + 'px';
       img.style.clipPath = 'inset(0 0 0 ' + Math.max(0, mapRect.left + x - imgRect.left) + 'px)';
     }
@@ -1143,6 +1160,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     }
     function render() {
       if (!C) return;
+      refit();
       var info = STAT[st.stat];
       var fontes = C.fontes.map(function (f) { return { value: f, label: NAME[f] }; });
       select('g-a', fontes, st.a);
