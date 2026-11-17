@@ -1,5 +1,5 @@
 {
- "gerado": "16/11/2026 18:40",
+ "gerado": "17/11/2026 16:24",
  "commit": "75a5a24",
  "fontes": {
   "artifacts/feature_study/global/base_global.parquet": "2b42f80ae3e09b20",
@@ -15,7 +15,7 @@
   "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster5.nc": "58d18225eb77e5c5",
   "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster6.nc": "89487524eee6fcdc"
  },
- "linhas_metricas": 980,
+ "linhas_metricas": 910,
  "estacoes": 131,
  "celulas_grade": 988
 }
