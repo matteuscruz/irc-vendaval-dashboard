@@ -1,21 +1,22 @@
 {
- "gerado": "17/11/2026 16:24",
- "commit": "75a5a24",
+ "gerado": "19/11/2026 19:30",
+ "commit": "e6482d6",
  "fontes": {
-  "artifacts/feature_study/global/base_global.parquet": "2b42f80ae3e09b20",
-  "artifacts/feature_study/global/previsoes_ml.parquet": "8e15b3a4988b3aa9",
-  "artifacts/feature_study/global/previsoes_lstm.parquet": "2a189688986592a9",
-  "artifacts/feature_study/global/estacoes.csv": "980f356abf96999e",
-  "artifacts/feature_study/global/revisao/significancia_rmse.csv": "ffd3f837020f5adb",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster1.nc": "36f3326da0b96e20",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster12.nc": "87336a0904f42468",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster2.nc": "def8ca9118a4347c",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster3.nc": "90eaf8d93ed39f9d",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster4.nc": "77bab364a6a0e8da",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster5.nc": "58d18225eb77e5c5",
-  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster6.nc": "89487524eee6fcdc"
+  "artifacts/feature_study/global/base_global.parquet": "5fe9fdf21d33c5d4",
+  "artifacts/feature_study/global/previsoes_ml.parquet": "e71cb41ff1c7b055",
+  "artifacts/feature_study/global/previsoes_lstm.parquet": "ee84714f69bdcc78",
+  "artifacts/feature_study/global/estacoes.csv": "56212d5af730be28",
+  "artifacts/feature_study/global/revisao/significancia_rmse.csv": "7170ad84e48a29d3",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster1.nc": "ea1cd69e27714a44",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster12.nc": "b14ff321593c289e",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster2.nc": "917cfce5520ef153",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster3.nc": "fcbf4cbbd099f4c0",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster4.nc": "ce44a4287b7973c6",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster5.nc": "38720658891626d5",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster6.nc": "993f40a77d56cad5",
+  "artifacts/feature_study/global/predicoes/por_cluster/predicoes_rajada_cluster7.nc": "449719836eeb7ee3"
  },
- "linhas_metricas": 910,
- "estacoes": 131,
- "celulas_grade": 988
+ "linhas_metricas": 1040,
+ "estacoes": 140,
+ "celulas_grade": 1119
 }
