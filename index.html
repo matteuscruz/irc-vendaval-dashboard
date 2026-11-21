@@ -236,6 +236,25 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
 .mean-ctl button:hover { background: #e4e4e4; }
 .mean-ctl button.active { background: #d4d4d4; border-color: #aaa; }
 
+/* estudos de caso: figura de painéis pequenos com escala discreta comum */
+.caso-fig { margin: 12px 0 18px; }
+.caso-tit { margin: 0; font-size: 1.05rem; }
+.caso-sub { margin: 2px 0 8px; font-size: .8rem; color: var(--muted, #555); }
+.caso-paineis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.caso-painel { min-width: 0; }
+.caso-rot { font-size: .78rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map.caso-map { height: 250px; border: 1px solid var(--ink, #1a1a1a); }
+#caso-map-inmet { background: #f6f3ee; }
+.caso-escala { max-width: 640px; margin: 14px auto 0; }
+.caso-bins { display: flex; height: 14px; border: 1px solid var(--ink, #1a1a1a); }
+.caso-bins i { flex: 1; }
+.caso-ticks { position: relative; height: 16px; font-size: .72rem; }
+.caso-ticks span { position: absolute; top: 2px; transform: translateX(-50%); }
+.caso-unid { text-align: center; font-size: .78rem; }
+.caso-ler { font-size: .78rem; color: var(--muted, #555); margin: 8px 0 0; min-height: 1.2em; }
+.caso-tab { max-width: 760px; }
+@media (max-width: 900px) { .caso-paineis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .map.caso-map { height: 220px; } }
+
 </style>
 </head>
 <body>
@@ -243,7 +262,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <div class="masthead-inner">
     <p class="kicker">ERA5 × INMET · rajada máxima diária · 8 clusters de vento · 2000–2025</p>
     <h1>Correção da rajada de vento do ERA5 com aprendizado de máquina</h1>
-    <p class="meta">Painel de métricas gerado em 21/11/2026 14:48 · análise <code>e6482d6</code> ·
+    <p class="meta">Painel de métricas gerado em 21/11/2026 15:00 · análise <code>e6482d6</code> ·
       <a href="manifest.json">proveniência</a></p>
   </div>
 </header>
@@ -456,28 +475,28 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <section id="casos" class="chapter">
     <p class="chapter-no">Capítulo 7</p>
     <h2>Estudos de caso</h2>
-    <p class="lead">Eventos de vento forte no Sul e no Sudeste. Escolha o evento, o dia (ou o máximo do evento) e a
-      fonte: o mapa mostra a rajada máxima diária prevista em cada célula, e os círculos, a rajada medida nas
-      estações do INMET na mesma escala de cor.</p>
+    <p class="lead">Eventos de vento forte no Sul e no Sudeste. Escolha o evento e o dia (ou o máximo do evento):
+      cada painel mostra a rajada máxima diária de uma fonte em cada célula, na mesma escala discreta, e os círculos, a
+      rajada medida nas estações do INMET. Os mapas andam juntos: arraste ou dê zoom em qualquer um.</p>
     <div class="controls">
       <label>Evento<select id="c-evento"></select></label>
       <label>Dia<select id="c-dia"></select></label>
-      <label>Fonte<select id="c-fonte"></select></label>
-      <div class="seg" id="c-mode"><button type="button" data-m="valores" class="active">valores</button><button type="button" data-m="dif">fonte − ERA5</button></div>
+      <label>Fonte destacada (tabela e barras)<select id="c-fonte"></select></label>
     </div>
     <div class="status" id="c-status"></div>
-    <div class="network">
-      <div>
-        <div class="map-wrap"><div class="map tall" id="caso-map"></div><div class="map-labels" id="caso-labels"></div></div>
-        <div class="colorbar" id="caso-colorbar"></div>
-      </div>
-      <div class="point-panel">
-        <h3 id="caso-titulo">Fontes contra o INMET</h3>
-        <table class="mini" id="caso-tabela"></table>
-        <p class="caption" id="caso-tab-caption">Rajada máxima diária na célula de cada estação contra a medida.
-          "≥ 20 m/s": estações em que o INMET mediu 20 m/s (72 km/h) ou mais, e quantas delas a fonte também pôs acima
-          de 20 m/s; "falsos": estações em que a fonte passou de 20 m/s e o INMET não.</p>
-      </div>
+    <figure class="caso-fig">
+      <h3 class="caso-tit" id="caso-tit"></h3>
+      <p class="caso-sub" id="caso-sub"></p>
+      <div class="caso-paineis" id="caso-paineis"></div>
+      <div class="caso-escala" id="caso-colorbar"></div>
+      <p class="caso-ler" id="caso-ler">passe o mouse sobre um painel para ler os valores da célula em todas as fontes</p>
+    </figure>
+    <div class="caso-tab">
+      <h3 id="caso-titulo">Fontes contra o INMET</h3>
+      <table class="mini" id="caso-tabela"></table>
+      <p class="caption" id="caso-tab-caption">Rajada máxima diária na célula de cada estação contra a medida.
+        "≥ 20 m/s": estações em que o INMET mediu 20 m/s (72 km/h) ou mais, e quantas delas a fonte também pôs acima
+        de 20 m/s; "falsos": estações em que a fonte passou de 20 m/s e o INMET não.</p>
     </div>
     <h3>Estações com as maiores rajadas medidas</h3>
     <div class="chart" id="caso-barras" style="height:380px"></div>
@@ -914,9 +933,11 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   }
 
   // ---------- mapa base (EPSG:4326, sem tiles, como no relatório MPAS) ----------
-  function baseMap(id) {
+  function baseMap(id, opt) {
+    opt = opt || {};
     if (!window.L || !$(id)) { if ($(id)) $(id).innerHTML = '<div class="empty">Biblioteca de mapas indisponível.</div>'; return null; }
-    var map = L.map(id, { crs: L.CRS.EPSG4326, zoomSnap: 0.25, zoomAnimation: false, attributionControl: false, minZoom: 3, maxZoom: 11 });
+    var map = L.map(id, { crs: L.CRS.EPSG4326, zoomSnap: 0.25, zoomAnimation: false, attributionControl: false, minZoom: 3, maxZoom: 11,
+      zoomControl: opt.zoomControl !== false });
     map.createPane('land'); map.getPane('land').style.zIndex = 250;
     map.createPane('lines'); map.getPane('lines').style.zIndex = 450;
     map.getPane('lines').style.pointerEvents = 'none';
@@ -930,7 +951,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     var grat = L.layerGroup().addTo(map);
     for (var lon = -60; lon <= -36; lon += 4) L.polyline([[-36, lon], [-12, lon]], { pane: 'lines', color: '#b5b5b5', weight: 0.4, interactive: false }).addTo(grat);
     for (var lat = -36; lat <= -12; lat += 4) L.polyline([[lat, -62], [lat, -34]], { pane: 'lines', color: '#b5b5b5', weight: 0.4, interactive: false }).addTo(grat);
-    L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map);
+    if (opt.scale !== false) L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map);
     return map;
   }
 
@@ -1373,25 +1394,40 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
 
   // ---------- estudos de caso: um evento, um dia (ou o máximo do evento), uma fonte ----------
   function initCasos() {
-    var meta = D.casos; if (!meta || !$('caso-map')) return;
+    var meta = D.casos; if (!meta || !$('caso-paineis')) return;
     var CONJ = { teste: 'dia de <b>teste</b>: nenhum modelo viu este dia no treino', '2025': '<b>2025</b>: ano nunca visto pelos modelos',
                  treino: 'dia de <b>treino</b>: os modelos viram as estações neste dia — o resultado nas estações é otimista',
                  'validação': 'dia de <b>validação</b>: usado para parar o treino e ajustar a escala — o resultado nas estações é otimista',
                  'sem dado': 'dia fora da base de treino' };
-    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual', mode: 'valores' };
+    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual' };
     select('c-evento', meta.eventos.map(function (e) {
       var d = e.dias.map(function (x) { return x.split('-').reverse().join('/'); });
       return { value: e.id, label: e.regiao + ' — ' + e.nome + ' (' + (d.length > 1 ? d[0] + ' a ' + d[d.length - 1] : d[0]) + ')' };
     }), st.ev);
-    var map = baseMap('caso-map'); if (!map) return;
-    var refit = keepFitted(map, [[-34, -58], [-15, -39.5]]);
-    var C = null, bounds = null, ov = null, LUTS = {}, estLayer = L.layerGroup().addTo(map), marks = {};
-    function L_(p) { return LUTS[p] || (LUTS[p] = lut(p)); }
-    function cor(v, lo, hi, pal) {
-      if (v === null || !isFinite(v)) return '#bbb';
-      var t = Math.max(0, Math.min(255, Math.round(255 * (v - lo) / ((hi - lo) || 1)))), c = L_(pal)[t];
-      return 'rgb(' + c.join(',') + ')';
-    }
+    // escala discreta comum: 0–40 m/s em faixas de 4 (amarelo → vermelho → roxo), a mesma em todos os painéis
+    var PASSO = 4, TOPO = 40;
+    var BINS = ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026', '#4d0a5c'];
+    var BINS_RGB = BINS.map(function (h) { return [1, 3, 5].map(function (i) { return parseInt(h.substr(i, 2), 16); }); });
+    function bin(v) { return Math.max(0, Math.min(BINS.length - 1, Math.floor(v / PASSO))); }
+    function cor(v) { return v === null || !isFinite(v) ? '#ffffff' : BINS[bin(v)]; }
+    var PAINEIS = ['era5', 'ml_local', 'ml_global_trimestral', 'ml_global_anual', 'lstm_local', 'lstm_global_anual', 'inmet'];
+    var ROT = { inmet: 'INMET (medido)' };
+    $('caso-paineis').innerHTML = PAINEIS.map(function (f, i) {
+      return '<div class="caso-painel"><div class="caso-rot"><b>(' + 'abcdefg'[i] + ')</b> ' + esc(ROT[f] || NAME[f]) +
+        '</div><div class="map caso-map" id="caso-map-' + f + '"></div></div>';
+    }).join('');
+    var mapas = {}, fits = [], ovs = {}, camadas = {}, sync = false;
+    PAINEIS.forEach(function (f, i) {
+      var m = baseMap('caso-map-' + f, { scale: i === 0, zoomControl: i === 0 }); if (!m) return;
+      mapas[f] = m; camadas[f] = L.layerGroup().addTo(m);
+      m.on('move', function () {         // os mapas andam juntos
+        if (sync) return; sync = true;
+        PAINEIS.forEach(function (g) { if (g !== f && mapas[g]) mapas[g].setView(m.getCenter(), m.getZoom(), { animate: false }); });
+        sync = false;
+      });
+    });
+    if (!mapas.era5) return;
+    var C = null, bounds = null, EXT = null;
     function evento() { return C.eventos.filter(function (e) { return e.id === st.ev; })[0]; }
     function dias() { var e = evento(); return st.dia === 'max' ? e.dias_info : e.dias_info.filter(function (x) { return x.data === st.dia; }); }
     function maxOf(arrs) {      // máximo célula a célula (ou estação a estação) entre os dias escolhidos
@@ -1404,66 +1440,73 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       return out;
     }
     function campo(f) { return maxOf(dias().map(function (x) { return x.campos[f]; })); }
-    var POS = null;     // célula da estação → posição nos vetores de campo (null se a célula não tem previsão)
-    function at(v, s) {
-      if (!POS) { POS = {}; C.cel.forEach(function (k, i) { POS[k] = i; }); }
-      var i = POS[s.k]; return i === undefined || v[i] === undefined ? null : v[i];
-    }
+    var POS = null;     // célula da grade → posição nos vetores de campo (undefined se a célula não tem previsão)
+    function pos(k) { if (!POS) { POS = {}; C.cel.forEach(function (c, i) { POS[c] = i; }); } return POS[k]; }
+    function at(v, s) { var i = pos(s.k); return i === undefined || v[i] === undefined ? null : v[i]; }
     function obs() { return maxOf(dias().map(function (x) { return x.obs; })); }
-    function cheio(vals) { var a = new Array(C.ny * C.nx).fill(null); C.cel.forEach(function (k, i) { a[k] = vals[i]; }); return a; }
-    function paint(full, lo, hi, pal) {
+    function paint(vals) {
       var cv = document.createElement('canvas'); cv.width = C.nx; cv.height = C.ny;
       var ctx = cv.getContext('2d'), img = ctx.createImageData(C.nx, C.ny);
-      for (var k = 0; k < full.length; k++) {
-        var v = full[k]; if (v === null || !isFinite(v)) continue;
-        var t = Math.max(0, Math.min(255, Math.round(255 * (v - lo) / ((hi - lo) || 1)))), c = L_(pal)[t];
-        img.data[4 * k] = c[0]; img.data[4 * k + 1] = c[1]; img.data[4 * k + 2] = c[2]; img.data[4 * k + 3] = 235;
-      }
+      C.cel.forEach(function (k, i) {
+        var v = vals[i]; if (v === null || !isFinite(v)) return;
+        var c = BINS_RGB[bin(v)];
+        img.data[4 * k] = c[0]; img.data[4 * k + 1] = c[1]; img.data[4 * k + 2] = c[2]; img.data[4 * k + 3] = 255;
+      });
       ctx.putImageData(img, 0, 0);
       return cv.toDataURL('image/png');
     }
+    function enquadra() {
+      PAINEIS.forEach(function (f) { if (mapas[f]) mapas[f].invalidateSize({ animate: false }); });
+      sync = true; mapas.era5.fitBounds(EXT, { animate: false, padding: [2, 2] }); sync = false;
+      var m = mapas.era5; PAINEIS.forEach(function (g) { if (g !== 'era5' && mapas[g]) mapas[g].setView(m.getCenter(), m.getZoom(), { animate: false }); });
+    }
+    var CAMPOS = {};
+    function ler(e_) {        // leitura de uma célula em todas as fontes
+      if (!C) return;
+      var ll = e_.latlng, iy = C.ny - 1 - Math.round((ll.lat - C.lat0) / C.d), ix = Math.round((ll.lng - C.lon0) / C.d);
+      if (iy < 0 || ix < 0 || iy >= C.ny || ix >= C.nx) return;
+      var i = pos(iy * C.nx + ix);
+      $('caso-ler').innerHTML = fmt(ll.lat, 2) + '°, ' + fmt(ll.lng, 2) + '° — ' + (i === undefined ? 'célula fora dos clusters' :
+        C.fontes.map(function (f) { return esc(NAME[f]) + ': <b>' + fmt(CAMPOS[f][i], 1) + '</b>'; }).join(' · ') + ' m/s');
+    }
+    PAINEIS.forEach(function (f) { if (mapas[f]) mapas[f].on('mousemove', ler); });
     function render() {
       if (!C) return;
-      refit();
       var e = evento(), ds = dias(), fonte = st.fonte;
       select('c-dia', [{ value: 'max', label: e.dias.length > 1 ? 'máximo do evento' : 'o dia' }].concat(
         e.dias.length > 1 ? e.dias.map(function (x) { return { value: x, label: x.split('-').reverse().join('/') }; }) : []), st.dia);
+      var novo = !EXT || EXT._ev !== e.id;
+      if (novo) { EXT = L.latLngBounds(e.extensao); EXT._ev = e.id; }
       // aviso: conjunto do split e disponibilidade do INMET
       var avisos = ds.map(function (x) { return x.data.split('-').reverse().join('/') + ': ' + (CONJ[x.conjunto] || x.conjunto) + (x.sem_inmet ? '; <b>sem medidas do INMET</b> (os dados vão até ' + C.inmet_ate.split('-').reverse().join('/') + ')' : ''); });
       var visto = ds.some(function (x) { return x.conjunto === 'treino' || x.conjunto === 'validação'; });
       $('c-status').className = 'status' + (visto ? ' critical' : '');
       $('c-status').innerHTML = avisos.join('<br>');
-      var vals = campo(fonte), e5 = campo('era5'), o = obs();
-      var full, lo, hi, pal, unit = 'm/s';
-      if (st.mode === 'dif' && fonte !== 'era5') {
-        var dif = vals.map(function (v, i) { return v === null || e5[i] === null ? null : v - e5[i]; });
-        var mags = dif.filter(function (v) { return v !== null; }).map(Math.abs).sort(function (a, b) { return a - b; });
-        var lim = mags.length ? mags[Math.floor(0.99 * (mags.length - 1))] || 1 : 1;
-        full = cheio(dif); lo = -lim; hi = lim; pal = 'vik';
-      } else {
-        var todos = [];
-        C.fontes.forEach(function (f) { campo(f).forEach(function (v) { if (v !== null) todos.push(v); }); });
-        o.forEach(function (v) { if (v !== null) todos.push(v); });
-        todos.sort(function (a, b) { return a - b; });
-        lo = 0; hi = todos.length ? Math.ceil(todos[Math.floor(0.995 * (todos.length - 1))]) : 30; pal = 'batlow'; full = cheio(vals);
-      }
-      if (ov) map.removeLayer(ov);
-      ov = L.imageOverlay(paint(full, lo, hi, pal), bounds, { opacity: 1 }).addTo(map);
-      $('caso-labels').innerHTML = '<span>' + esc(NAME[fonte]) + (st.mode === 'dif' && fonte !== 'era5' ? ' − ERA5' : '') + ' · ' + (st.dia === 'max' ? (e.dias.length > 1 ? 'máximo do evento' : e.dias[0].split('-').reverse().join('/')) : st.dia.split('-').reverse().join('/')) + '</span>';
-      var stops = (D.palettes || {})[pal] || [];
-      $('caso-colorbar').innerHTML = '<span>' + fmt(lo, 0) + '</span><div class="bar" style="background:' + gradient(stops) + '"></div><span>' + fmt(hi, 0) + '</span><span>' + unit + '</span>';
-      // estações: medida na mesma escala (no modo diferença, fonte − INMET)
-      C.estacoes.forEach(function (s, i) {
-        var ov_ = o[i];
-        var pred = at(vals, s), v = st.mode === 'dif' && fonte !== 'era5' ? (pred !== null && ov_ !== null ? pred - ov_ : null) : ov_;
-        if (!marks[s.id]) marks[s.id] = L.circleMarker([s.lat, s.lon], { radius: 5, color: '#1a1a1a', weight: 0.9, fillOpacity: 1 }).bindTooltip('', { direction: 'top' }).addTo(estLayer);
-        marks[s.id].setStyle({ fillColor: cor(v, lo, hi, pal), radius: ov_ === null ? 3 : 5 });
-        marks[s.id].setTooltipContent(s.id + ' · cluster ' + s.cluster + '<br>INMET: ' + fmt(ov_, 1) + ' m/s<br>' + esc(NAME[fonte]) + ': ' + fmt(pred, 1) +
-          ' m/s<br>ERA5: ' + fmt(at(e5, s), 1) + ' m/s');
+      var o = obs();
+      C.fontes.forEach(function (f) { CAMPOS[f] = campo(f); });
+      // só as estações dentro do enquadramento do evento
+      var dentro = C.estacoes.map(function (s, i) { return { s: s, o: o[i] }; }).filter(function (r) { return EXT.contains([r.s.lat, r.s.lon]); });
+      var nobs = dentro.filter(function (r) { return r.o !== null; }).length;
+      var quando = st.dia === 'max' ? (e.dias.length > 1 ? e.dias.map(function (x) { return x.split('-').reverse().join('/'); }).join(' a ') + ' (máximo do evento)' : e.dias[0].split('-').reverse().join('/')) : st.dia.split('-').reverse().join('/');
+      $('caso-tit').textContent = 'Comparação dos modelos — ' + e.regiao + ', ' + e.nome;
+      $('caso-sub').textContent = e.regiao + ' · ' + quando + ' · escala discreta comum · ' + nobs + ' estações do INMET com medida';
+      PAINEIS.forEach(function (f) {
+        var m = mapas[f]; if (!m) return;
+        if (ovs[f]) { m.removeLayer(ovs[f]); ovs[f] = null; }
+        if (f !== 'inmet') ovs[f] = L.imageOverlay(paint(CAMPOS[f]), bounds, { opacity: 1 }).addTo(m);
+        camadas[f].clearLayers();
+        dentro.forEach(function (r) {
+          var s = r.s, pred = f === 'inmet' ? null : at(CAMPOS[f], s);
+          L.circleMarker([s.lat, s.lon], { radius: f === 'inmet' ? 4.5 : 3.2, color: '#1a1a1a', weight: 0.7, fillColor: cor(r.o),
+            fillOpacity: r.o === null ? 0 : 1, opacity: r.o === null ? 0.5 : 1 })
+            .bindTooltip(s.id + ' · cluster ' + s.cluster + '<br>INMET: ' + fmt(r.o, 1) + ' m/s' +
+              (f === 'inmet' ? '' : '<br>' + esc(NAME[f]) + ': ' + fmt(pred, 1) + ' m/s'), { direction: 'top' }).addTo(camadas[f]);
+        });
       });
+      if (novo) enquadra();
       // tabela: todas as fontes contra o INMET, nas estações com medida
       var linhas = C.fontes.map(function (f) {
-        var v = campo(f), e2 = 0, b = 0, n = 0, ev = 0, hit = 0, fa = 0;
+        var v = CAMPOS[f], e2 = 0, b = 0, n = 0, ev = 0, hit = 0, fa = 0;
         C.estacoes.forEach(function (s, i) {
           var p = at(v, s), y = o[i]; if (p === null || y === null) return;
           e2 += (p - y) * (p - y); b += p - y; n++;
@@ -1474,6 +1517,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       }).join('');
       $('caso-tabela').innerHTML = '<thead><tr><th>fonte</th><th>estações</th><th>RMSE</th><th>viés</th><th>≥ 20 m/s</th><th>falsos</th></tr></thead><tbody>' + linhas + '</tbody>';
       // barras: as 30 estações com maior rajada medida
+      var vals = CAMPOS[fonte], e5 = CAMPOS.era5;
       var ord = C.estacoes.map(function (s, i) { return { s: s, o: o[i], p: at(vals, s), e: at(e5, s) }; })
         .filter(function (r) { return r.o !== null; }).sort(function (a, b) { return b.o - a.o; }).slice(0, 30);
       var x = ord.map(function (r) { return r.s.id + ' (c' + r.s.cluster + ')'; });
@@ -1486,11 +1530,18 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
         xaxis: { tickangle: -50, tickfont: { size: 9 } }, margin: { l: 50, r: 8, t: 26, b: 80 } });
       if (!ord.length) $('caso-barras').innerHTML = '<div class="empty">Sem medidas do INMET neste dia.</div>';
     }
+    // barra de cores discreta, como na figura do pôster
+    $('caso-colorbar').innerHTML = '<div class="caso-bins">' + BINS.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') +
+      '</div><div class="caso-ticks">' + BINS.concat(['']).map(function (_, i) { return '<span style="left:' + (100 * i / BINS.length) + '%">' + i * PASSO + '</span>'; }).join('') +
+      '</div><div class="caso-unid">Rajada máxima diária (m/s)</div>';
     select('c-fonte', MODELS.filter(function (m) { return m !== 'lstm_global_trimestral'; }).map(function (m) { return { value: m, label: NAME[m] }; }), st.fonte);
     $('c-evento').addEventListener('change', function () { st.ev = $('c-evento').value; st.dia = 'max'; render(); });
     $('c-dia').addEventListener('change', function () { st.dia = $('c-dia').value; render(); });
     $('c-fonte').addEventListener('change', function () { st.fonte = $('c-fonte').value; render(); });
-    segment('c-mode', function (d_) { st.mode = d_.m; render(); });
+    var w0 = 0;
+    function refit() { var w = $('caso-paineis').clientWidth; if (!w || !EXT || w === w0) return; w0 = w; enquadra(); }
+    window.addEventListener('resize', refit); window.addEventListener('load', function () { w0 = 0; refit(); });
+    if (window.IntersectionObserver) new IntersectionObserver(function (es) { if (es[0].isIntersecting) { w0 = 0; refit(); } }).observe($('caso-paineis'));
     $('c-status').textContent = 'Carregando os estudos de caso…';
     loadSeries('__casos', 'assets/casos/casos.js', function (c) {
       if (!c) { $('c-status').textContent = 'Falha ao carregar os estudos de caso.'; return; }
