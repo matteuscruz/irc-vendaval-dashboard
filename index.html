@@ -254,6 +254,10 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
 .caso-ler { font-size: .78rem; color: var(--muted, #555); margin: 8px 0 0; min-height: 1.2em; }
 .caso-tab { max-width: 760px; }
 @media (max-width: 900px) { .caso-paineis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .map.caso-map { height: 220px; } }
+.caso-disp { height: 250px; border: 1px solid var(--ink, #1a1a1a); background: #fff; }
+#caso-disp-rot { white-space: nowrap; }
+@media (max-width: 900px) { .caso-disp { height: 220px; } }
+#caso-disp .modebar-container { display: none; }
 
 </style>
 </head>
@@ -262,7 +266,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <div class="masthead-inner">
     <p class="kicker">ERA5 × INMET · rajada máxima diária · 8 clusters de vento · 2000–2025</p>
     <h1>Correção da rajada de vento do ERA5 com aprendizado de máquina</h1>
-    <p class="meta">Painel de métricas gerado em 21/11/2026 15:00 · análise <code>e6482d6</code> ·
+    <p class="meta">Painel de métricas gerado em 21/11/2026 15:14 · análise <code>e6482d6</code> ·
       <a href="manifest.json">proveniência</a></p>
   </div>
 </header>
@@ -477,11 +481,13 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     <h2>Estudos de caso</h2>
     <p class="lead">Eventos de vento forte no Sul e no Sudeste. Escolha o evento e o dia (ou o máximo do evento):
       cada painel mostra a rajada máxima diária de uma fonte em cada célula, na mesma escala discreta, e os círculos, a
-      rajada medida nas estações do INMET. Os mapas andam juntos: arraste ou dê zoom em qualquer um.</p>
+      rajada medida nas estações do INMET. Os mapas andam juntos: arraste ou dê zoom em qualquer um. O painel (h)
+      põe a fonte destacada e o ERA5 contra o INMET nas estações, com a reta de regressão de cada um e a diagonal
+      1:1; clique numa estação (no mapa ou no gráfico) para destacá-la.</p>
     <div class="controls">
       <label>Evento<select id="c-evento"></select></label>
       <label>Dia<select id="c-dia"></select></label>
-      <label>Fonte destacada (tabela e barras)<select id="c-fonte"></select></label>
+      <label>Fonte destacada (painel h, tabela e barras)<select id="c-fonte"></select></label>
     </div>
     <div class="status" id="c-status"></div>
     <figure class="caso-fig">
@@ -1399,7 +1405,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
                  treino: 'dia de <b>treino</b>: os modelos viram as estações neste dia — o resultado nas estações é otimista',
                  'validação': 'dia de <b>validação</b>: usado para parar o treino e ajustar a escala — o resultado nas estações é otimista',
                  'sem dado': 'dia fora da base de treino' };
-    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual' };
+    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual', sel: null };
     select('c-evento', meta.eventos.map(function (e) {
       var d = e.dias.map(function (x) { return x.split('-').reverse().join('/'); });
       return { value: e.id, label: e.regiao + ' — ' + e.nome + ' (' + (d.length > 1 ? d[0] + ' a ' + d[d.length - 1] : d[0]) + ')' };
@@ -1415,7 +1421,8 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     $('caso-paineis').innerHTML = PAINEIS.map(function (f, i) {
       return '<div class="caso-painel"><div class="caso-rot"><b>(' + 'abcdefg'[i] + ')</b> ' + esc(ROT[f] || NAME[f]) +
         '</div><div class="map caso-map" id="caso-map-' + f + '"></div></div>';
-    }).join('');
+    }).join('') + '<div class="caso-painel"><div class="caso-rot"><b>(h)</b> <span id="caso-disp-rot">fonte × INMET nas estações</span></div>' +
+      '<div class="caso-disp" id="caso-disp"></div></div>';
     var mapas = {}, fits = [], ovs = {}, camadas = {}, sync = false;
     PAINEIS.forEach(function (f, i) {
       var m = baseMap('caso-map-' + f, { scale: i === 0, zoomControl: i === 0 }); if (!m) return;
@@ -1486,7 +1493,9 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       C.fontes.forEach(function (f) { CAMPOS[f] = campo(f); });
       // só as estações dentro do enquadramento do evento
       var dentro = C.estacoes.map(function (s, i) { return { s: s, o: o[i] }; }).filter(function (r) { return EXT.contains([r.s.lat, r.s.lon]); });
-      var nobs = dentro.filter(function (r) { return r.o !== null; }).length;
+      var comObs = dentro.filter(function (r) { return r.o !== null; }), nobs = comObs.length;
+      if (nobs && !comObs.some(function (r) { return r.s.id === st.sel; }))      // padrão: a maior rajada medida
+        st.sel = comObs.slice().sort(function (a, b) { return b.o - a.o; })[0].s.id;
       var quando = st.dia === 'max' ? (e.dias.length > 1 ? e.dias.map(function (x) { return x.split('-').reverse().join('/'); }).join(' a ') + ' (máximo do evento)' : e.dias[0].split('-').reverse().join('/')) : st.dia.split('-').reverse().join('/');
       $('caso-tit').textContent = 'Comparação dos modelos — ' + e.regiao + ', ' + e.nome;
       $('caso-sub').textContent = e.regiao + ' · ' + quando + ' · escala discreta comum · ' + nobs + ' estações do INMET com medida';
@@ -1500,10 +1509,13 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
           L.circleMarker([s.lat, s.lon], { radius: f === 'inmet' ? 4.5 : 3.2, color: '#1a1a1a', weight: 0.7, fillColor: cor(r.o),
             fillOpacity: r.o === null ? 0 : 1, opacity: r.o === null ? 0.5 : 1 })
             .bindTooltip(s.id + ' · cluster ' + s.cluster + '<br>INMET: ' + fmt(r.o, 1) + ' m/s' +
-              (f === 'inmet' ? '' : '<br>' + esc(NAME[f]) + ': ' + fmt(pred, 1) + ' m/s'), { direction: 'top' }).addTo(camadas[f]);
+              (f === 'inmet' ? '' : '<br>' + esc(NAME[f]) + ': ' + fmt(pred, 1) + ' m/s') + '<br><i>clique para destacar no painel (h)</i>', { direction: 'top' })
+            .on('click', function () { st.sel = s.id; render(); }).addTo(camadas[f]);
+          if (s.id === st.sel) L.circleMarker([s.lat, s.lon], { radius: 8, color: '#0b57d0', weight: 2.2, fill: false, interactive: false }).addTo(camadas[f]);
         });
       });
       if (novo) enquadra();
+      dispersao(dentro);
       // tabela: todas as fontes contra o INMET, nas estações com medida
       var linhas = C.fontes.map(function (f) {
         var v = CAMPOS[f], e2 = 0, b = 0, n = 0, ev = 0, hit = 0, fa = 0;
@@ -1530,12 +1542,55 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
         xaxis: { tickangle: -50, tickfont: { size: 9 } }, margin: { l: 50, r: 8, t: 26, b: 80 } });
       if (!ord.length) $('caso-barras').innerHTML = '<div class="empty">Sem medidas do INMET neste dia.</div>';
     }
+    // (h) dispersão: fonte destacada e ERA5 contra o INMET nas estações do enquadramento, com reta de regressão
+    function ols(xs, ys) {
+      var n = xs.length; if (n < 3) return null;
+      var mx = 0, my = 0; for (var i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; } mx /= n; my /= n;
+      var sxx = 0, sxy = 0, syy = 0;
+      for (i = 0; i < n; i++) { sxx += (xs[i] - mx) * (xs[i] - mx); sxy += (xs[i] - mx) * (ys[i] - my); syy += (ys[i] - my) * (ys[i] - my); }
+      if (!sxx || !syy) return null;
+      var b = sxy / sxx; return { a: my - b * mx, b: b, r: sxy / Math.sqrt(sxx * syy) };
+    }
+    function dispersao(dentro) {
+      var fonte = st.fonte, ok = dentro.filter(function (r) { return r.o !== null; });
+      if (!ok.length) { plot('caso-disp', [], {}); return; }
+      var tr = [{ type: 'scatter', mode: 'lines', x: [0, TOPO], y: [0, TOPO], line: { color: '#888', width: 1, dash: 'dash' }, hoverinfo: 'skip', showlegend: false }];
+      var sel = null;
+      [['era5', '#9a9a9a', 5], [fonte, COLOR[fonte], 7]].forEach(function (z, j) {
+        if (j === 0 && fonte === 'era5') return;
+        var f = z[0], pts = ok.map(function (r) { return { r: r, p: at(CAMPOS[f], r.s) }; }).filter(function (q) { return q.p !== null; });
+        var xs = pts.map(function (q) { return q.r.o; }), ys = pts.map(function (q) { return q.p; }), g = ols(xs, ys);
+        tr.push({ type: 'scatter', mode: 'markers', name: (f === 'era5' ? 'ERA5' : NAME[f]) + (g ? ' · r = ' + fmt(g.r, 2) : ''), x: xs, y: ys,
+          customdata: pts.map(function (q) { return q.r.s.id; }), legendgroup: f, text: pts.map(function (q) { return q.r.s.id + ' · c' + q.r.s.cluster; }),
+          hovertemplate: '%{text}<br>INMET %{x:.1f} · ' + esc(NAME[f]) + ' %{y:.1f} m/s<extra></extra>',
+          marker: { color: z[1], size: z[2], opacity: j ? 0.9 : 0.55, line: { color: '#1a1a1a', width: j ? 0.6 : 0 } } });
+        if (g) tr.push({ type: 'scatter', mode: 'lines', x: [0, TOPO], y: [g.a, g.a + g.b * TOPO], line: { color: z[1], width: 1.6 },
+          hoverinfo: 'skip', showlegend: false });
+        if (f === fonte) pts.forEach(function (q) { if (q.r.s.id === st.sel) sel = q; });
+      });
+      if (sel) tr.push({ type: 'scatter', mode: 'markers', x: [sel.r.o], y: [sel.p], hoverinfo: 'skip', showlegend: false,
+        marker: { size: 14, color: 'rgba(0,0,0,0)', line: { color: '#0b57d0', width: 2.2 } } });
+      var e5 = sel ? at(CAMPOS.era5, sel.r.s) : null;
+      $('caso-disp-rot').textContent = NAME[fonte] + ' × INMET';
+      var ann = sel ? [{ xref: 'paper', yref: 'paper', x: 0.99, y: 0.02, xanchor: 'right', yanchor: 'bottom', showarrow: false, align: 'right',
+        bgcolor: 'rgba(255,255,255,.85)', font: { size: 9, color: '#0b57d0' },
+        text: '<b>' + esc(sel.r.s.id) + '</b> (c' + sel.r.s.cluster + ')<br>INMET ' + fmt(sel.r.o, 1) + ' · ' + esc(NAME[fonte]) + ' ' + fmt(sel.p, 1) +
+          (fonte !== 'era5' ? '<br>ERA5 ' + fmt(e5, 1) : '') + ' m/s' }] : [];
+      plot('caso-disp', tr, { showlegend: true, annotations: ann,
+        legend: { x: 0.01, y: 0.99, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(255,255,255,.8)', font: { size: 9 } },
+        xaxis: { title: { text: 'INMET (m/s)', font: { size: 10 } }, range: [0, TOPO], dtick: 8, tickfont: { size: 9 } },
+        yaxis: { title: { text: 'fonte (m/s)', font: { size: 10 } }, range: [0, TOPO], dtick: 8, tickfont: { size: 9 } },
+        margin: { l: 38, r: 6, t: 6, b: 32 } });
+      var node = $('caso-disp');
+      if (node && node.on && !node._clk) { node._clk = 1; node.on('plotly_click', function (ev) {
+        var id = ev.points && ev.points[0] && ev.points[0].customdata; if (id) { st.sel = id; render(); } }); }
+    }
     // barra de cores discreta, como na figura do pôster
     $('caso-colorbar').innerHTML = '<div class="caso-bins">' + BINS.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') +
       '</div><div class="caso-ticks">' + BINS.concat(['']).map(function (_, i) { return '<span style="left:' + (100 * i / BINS.length) + '%">' + i * PASSO + '</span>'; }).join('') +
       '</div><div class="caso-unid">Rajada máxima diária (m/s)</div>';
     select('c-fonte', MODELS.filter(function (m) { return m !== 'lstm_global_trimestral'; }).map(function (m) { return { value: m, label: NAME[m] }; }), st.fonte);
-    $('c-evento').addEventListener('change', function () { st.ev = $('c-evento').value; st.dia = 'max'; render(); });
+    $('c-evento').addEventListener('change', function () { st.ev = $('c-evento').value; st.dia = 'max'; st.sel = null; render(); });
     $('c-dia').addEventListener('change', function () { st.dia = $('c-dia').value; render(); });
     $('c-fonte').addEventListener('change', function () { st.fonte = $('c-fonte').value; render(); });
     var w0 = 0;
