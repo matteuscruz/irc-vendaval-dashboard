@@ -266,7 +266,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
   <div class="masthead-inner">
     <p class="kicker">ERA5 × INMET · rajada máxima diária · 8 clusters de vento · 2000–2025</p>
     <h1>Correção da rajada de vento do ERA5 com aprendizado de máquina</h1>
-    <p class="meta">Painel de métricas gerado em 21/11/2026 15:14 · análise <code>e6482d6</code> ·
+    <p class="meta">Painel de métricas gerado em 24/11/2026 14:04 · análise <code>e6482d6</code> ·
       <a href="manifest.json">proveniência</a></p>
   </div>
 </header>
@@ -480,14 +480,15 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     <p class="chapter-no">Capítulo 7</p>
     <h2>Estudos de caso</h2>
     <p class="lead">Eventos de vento forte no Sul e no Sudeste. Escolha o evento e o dia (ou o máximo do evento):
-      cada painel mostra a rajada máxima diária de uma fonte em cada célula, na mesma escala discreta, e os círculos, a
-      rajada medida nas estações do INMET. Os mapas andam juntos: arraste ou dê zoom em qualquer um. O painel (h)
+      cada painel mostra a rajada máxima diária de uma fonte em cada célula, na mesma escala discreta, e o painel (g), a
+      rajada medida nas estações do INMET (marque a opção abaixo para sobrepô-las também aos mapas dos modelos). Os mapas andam juntos: arraste ou dê zoom em qualquer um. O painel (h)
       põe a fonte destacada e o ERA5 contra o INMET nas estações, com a reta de regressão de cada um e a diagonal
       1:1; clique numa estação (no mapa ou no gráfico) para destacá-la.</p>
     <div class="controls">
       <label>Evento<select id="c-evento"></select></label>
       <label>Dia<select id="c-dia"></select></label>
       <label>Fonte destacada (painel h, tabela e barras)<select id="c-fonte"></select></label>
+      <label class="inline"><input type="checkbox" id="c-est"> Estações do INMET nos mapas dos modelos</label>
     </div>
     <div class="status" id="c-status"></div>
     <figure class="caso-fig">
@@ -1405,7 +1406,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
                  treino: 'dia de <b>treino</b>: os modelos viram as estações neste dia — o resultado nas estações é otimista',
                  'validação': 'dia de <b>validação</b>: usado para parar o treino e ajustar a escala — o resultado nas estações é otimista',
                  'sem dado': 'dia fora da base de treino' };
-    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual', sel: null };
+    var st = { ev: meta.eventos[0].id, dia: 'max', fonte: 'lstm_global_anual', sel: null, est: false };
     select('c-evento', meta.eventos.map(function (e) {
       var d = e.dias.map(function (x) { return x.split('-').reverse().join('/'); });
       return { value: e.id, label: e.regiao + ' — ' + e.nome + ' (' + (d.length > 1 ? d[0] + ' a ' + d[d.length - 1] : d[0]) + ')' };
@@ -1506,6 +1507,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
         camadas[f].clearLayers();
         dentro.forEach(function (r) {
           var s = r.s, pred = f === 'inmet' ? null : at(CAMPOS[f], s);
+          if (f !== 'inmet' && !st.est) return;   // estações só no painel do INMET, salvo se pedidas
           L.circleMarker([s.lat, s.lon], { radius: f === 'inmet' ? 4.5 : 3.2, color: '#1a1a1a', weight: 0.7, fillColor: cor(r.o),
             fillOpacity: r.o === null ? 0 : 1, opacity: r.o === null ? 0.5 : 1 })
             .bindTooltip(s.id + ' · cluster ' + s.cluster + '<br>INMET: ' + fmt(r.o, 1) + ' m/s' +
@@ -1593,6 +1595,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
     $('c-evento').addEventListener('change', function () { st.ev = $('c-evento').value; st.dia = 'max'; st.sel = null; render(); });
     $('c-dia').addEventListener('change', function () { st.dia = $('c-dia').value; render(); });
     $('c-fonte').addEventListener('change', function () { st.fonte = $('c-fonte').value; render(); });
+    $('c-est').addEventListener('change', function () { st.est = $('c-est').checked; render(); });
     var w0 = 0;
     function refit() { var w = $('caso-paineis').clientWidth; if (!w || !EXT || w === w0) return; w0 = w; enquadra(); }
     window.addEventListener('resize', refit); window.addEventListener('load', function () { w0 = 0; refit(); });
